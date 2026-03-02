@@ -6,7 +6,6 @@ services:
 
     buildCommand: |
       npm ci
-      npx playwright install --with-deps
       npm run build
 
     startCommand: npm run start
