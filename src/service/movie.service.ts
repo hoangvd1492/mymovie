@@ -1,7 +1,5 @@
 import { BASE_WEB } from "@/config";
-import { getBrowser } from "@/lib/crawler";
-import { streamingQueue } from "@/lib/queue";
-import { getCache, setCache } from "@/lib/redis";
+import { getCache, setCache } from "@/lib/redis/redis";
 
 import axios from "axios";
 import * as cheerio from "cheerio";
@@ -199,39 +197,42 @@ export const MovieService = {
     movieSlug: string,
     epSlug?: string,
   ): Promise<string | null> => {
-    return streamingQueue.add(async () => {
-      const CACHE_KEY = `movie:stream:${movieSlug}:${epSlug ?? "single"}`;
-      const cached = await getCache<string>(CACHE_KEY);
-      if (cached) return cached;
+    const CACHE_KEY = `movie:stream:${movieSlug}:${epSlug ?? "single"}`;
 
-      const browser = await getBrowser();
-      const page = await browser.newPage();
+    const cached = await getCache<string>(CACHE_KEY);
+    if (cached) return cached;
 
-      try {
-        const url = [BASE_WEB, movieSlug, epSlug].filter(Boolean).join("/");
+    try {
+      const url = [BASE_WEB, movieSlug, epSlug].filter(Boolean).join("/");
 
-        await page.goto(url, {
-          waitUntil: "domcontentloaded",
-        });
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Referer: BASE_WEB,
+        },
+      });
 
-        const response = await page.waitForResponse(
-          (res) =>
-            res.url().includes("index.m3u8") &&
-            res.request().resourceType() === "xhr",
-          { timeout: 20000 },
-        );
+      const html = await res.text();
 
-        const m3u8Url = response.url();
-        await setCache(CACHE_KEY, m3u8Url);
+      // Bắt link index.m3u8 trong HTML
+      const match = html.match(/https?:\/\/[^"' ]+index\.m3u8[^"' ]*/i);
 
-        return m3u8Url;
-      } catch (err) {
-        console.error("Streaming error:", err);
+      if (!match) {
+        console.error("Không tìm thấy m3u8");
         return null;
-      } finally {
-        await page.close();
       }
-    });
+
+      const m3u8Url = match[0];
+
+      console.log(m3u8Url);
+
+      await setCache(CACHE_KEY, m3u8Url, 3600);
+
+      return m3u8Url;
+    } catch (err) {
+      console.error("Streaming error:", err);
+      return null;
+    }
   },
 
   //tìm kiếm bằng topic
@@ -513,8 +514,17 @@ export const MovieService = {
 
   //Lấy data bằng slugArr
   getBySlugArr: async (slugArr: string[]): Promise<any[]> => {
-    const promises = slugArr.map((slug) => MovieService.getDetail(slug));
-    const results = await Promise.all(promises);
+    const CHUNK_SIZE = 5;
+    const results: any[] = [];
+
+    for (let i = 0; i < slugArr.length; i += CHUNK_SIZE) {
+      const chunk = slugArr.slice(i, i + CHUNK_SIZE);
+      const chunkResults = await Promise.all(
+        chunk.map((slug) => MovieService.getDetail(slug)),
+      );
+      results.push(...chunkResults);
+    }
+
     return results.filter((item) => item !== null);
   },
 

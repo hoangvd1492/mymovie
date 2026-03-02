@@ -2,6 +2,15 @@ services:
   - type: web
     name: nextjs-app
     runtime: node
-    buildCommand: npm install && npx playwright install --with-deps && npm run build
-    startCommand: npm run start
     plan: free
+
+    buildCommand: |
+      npm ci
+      npx playwright install --with-deps
+      npm run build
+
+    startCommand: npm run start
+
+    envVars:
+      - key: NODE_VERSION
+        value: 20

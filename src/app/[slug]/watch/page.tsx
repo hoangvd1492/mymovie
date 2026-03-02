@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/supabase/getCurrentUser";
 import { MovieService } from "@/service/movie.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DataNotFound } from "@/component/utils/data-notfound/DataNotFound";
 
 export async function generateMetadata({
   params,
@@ -44,7 +45,7 @@ export default async function Page({
     MovieService.getStreamingLink(slug, ep),
   ]);
 
-  if (!movie || !streamLink) {
+  if (!movie) {
     notFound();
   }
 
@@ -170,7 +171,7 @@ export default async function Page({
             </span>
           </div>
           <div className="w-full">
-            <Player key={streamLink} url={streamLink} />
+            {streamLink ? <Player url={streamLink} /> : <DataNotFound />}
           </div>
         </div>
       </div>
