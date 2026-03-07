@@ -1,4 +1,4 @@
-import { MovieService } from "@/service/movie.service";
+import { MovieService } from "@/service/movie_tp.service";
 import { Header } from "./Header";
 
 export async function HeaderWrapper() {

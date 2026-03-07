@@ -1,6 +1,6 @@
 "use server";
 
-import { MovieService } from "@/service/movie.service";
+import { MovieService } from "@/service/movie_tp.service";
 import { getCurrentUser } from "../supabase/getCurrentUser";
 import { createClient } from "../supabase/server";
 

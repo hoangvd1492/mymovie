@@ -5,10 +5,10 @@ export const MovieCard2: React.FC<{ item: any }> = ({ item }) => {
   return (
     <div className="movie-card-2 relative">
       <div className="flex flex-row gap-4">
-        <div className="w-[96px] aspect-4/5 overflow-hidden mb-4 rounded">
+        <div className="w-[96px] flex-shrink-0 aspect-4/5 overflow-hidden mb-4 rounded">
           <Link href={`/${item.slug}`}>
             <img
-              src={item.image}
+              src={item.thumbnail}
               className="
               w-full h-full object-cover
               transition-all duration-300 ease-out

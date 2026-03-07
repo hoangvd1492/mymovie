@@ -1,4 +1,4 @@
-import { MovieInTopic } from "@/component/common/MovieInTopic/MovieInTopic";
+import { PhimBo } from "@/component/common/PhimBo/PhimBo";
 import { Loading } from "@/component/utils/loading/Loading";
 
 import { Suspense } from "react";
@@ -23,7 +23,7 @@ export default async function Page({
       </div>
 
       <Suspense fallback={<Loading />}>
-        <MovieInTopic slug={"phim-bo-1"} currentPage={currentPage} />
+        <PhimBo currentPage={currentPage} />
       </Suspense>
     </div>
   );

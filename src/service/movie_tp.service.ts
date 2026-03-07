@@ -1,8 +1,9 @@
-import { BASE_WEB } from "@/config";
 import { getCache, setCache } from "@/lib/redis/redis";
 
 import axios from "axios";
 import * as cheerio from "cheerio";
+
+const BASE_WEB = "https://thungphim.me.uk/";
 
 export const MovieService = {
   //Lấy danh mục
@@ -22,7 +23,11 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const result = $("#menu-item-2001 > ul.sub-menu > li > a")
+      console.log($);
+
+      const result = $("div.menu-item-sub")
+        .eq(0)
+        .find("a.dropdown-item")
         .map((_, el) => {
           const title = $(el).text().trim();
           const href = $(el).attr("href") || "";
@@ -62,7 +67,9 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const result = $("#menu-item-2002 > ul.sub-menu > li > a")
+      const result = $("div.menu-item-sub")
+        .eq(1)
+        .find("a.dropdown-item")
         .map((_, el) => {
           const title = $(el).text().trim();
           const href = $(el).attr("href") || "";
@@ -90,24 +97,36 @@ export const MovieService = {
 
     const CACHE_KEY = `movie:detail:${slug}`;
     const cached = await getCache<any>(CACHE_KEY);
-    if (cached) return cached;
+    // if (cached) return cached;
 
     try {
-      const { data } = await axios.get(`${BASE_WEB}/${slug}`);
+      const { data } = await axios.get(`${BASE_WEB}/chi-tiet-phim/${slug}`);
       const $ = cheerio.load(data);
 
-      const title = $("h1.movie-title-detail").text().trim();
-      const alias = $("h2.movie-original-title").text().trim();
-      const image = $("div.movie-box img.thumbnail").attr("src") || null;
+      const title = $("div.ds-info h2.media-name").text().trim();
+      const alias = $("div.ds-info div.alias-name").text().trim();
 
-      const description = $("div.content-detail p")
-        .map((_, el) => $(el).text().trim())
-        .get()
-        .join("\n");
+      let poster =
+        $("div.background-fade")
+          .attr("style")
+          ?.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || null;
 
-      const episodes = $("div.episodes-grid a")
+      if (poster && !poster.startsWith("http")) {
+        poster = BASE_WEB + poster;
+      }
+
+      let thumbnail = $("div.ds-info .v-thumbnail img").attr("src") || null;
+
+      if (thumbnail && !thumbnail.startsWith("http")) {
+        thumbnail = BASE_WEB + thumbnail;
+      }
+
+      const description = $("div.ds-info div.description").text();
+
+      const episodes = $("#tab-eps a.item")
         .map((_, el) => {
-          const name = $(el).text().trim();
+          const name =
+            $(el).find(".media-title").text() || $(el).find(".info").text();
           const href = $(el).attr("href") || "";
 
           const slug = href.split("/").filter(Boolean).pop() || null;
@@ -118,69 +137,75 @@ export const MovieService = {
           };
         })
         .get();
+
       const meta: any = {};
 
-      $(".movie-info__meta")
-        .find(".meta-item, .metauscript-item") // bắt cả 2 loại class
-        .each((_, el) => {
-          const label = $(el)
-            .find(".meta-label")
-            .text()
-            .replace(":", "")
-            .trim();
+      $(".detail-line").each((_, el) => {
+        const label = $(el).find(".de-title").text().replace(":", "").trim();
 
-          const valueElement = $(el).find(".meta-value");
+        const valueEl = $(el).find(".de-value");
 
-          // Nếu có thẻ a → lấy mảng
-          if (valueElement.find("a").length > 0) {
-            meta[label] = valueElement
-              .find("a")
-              .map((_, a) => $(a).text().trim())
-              .get();
-          } else {
-            meta[label] = valueElement.text().trim();
-          }
-        });
+        if (!label) return;
 
-      const recommend = $("div.movies-section div.movie-item")
+        if (valueEl.find("a").length) {
+          meta[label] = valueEl
+            .find("a")
+            .map((_, a) => $(a).text().trim())
+            .get();
+        } else {
+          meta[label] = valueEl.text().trim();
+        }
+      });
+
+      const tags = $(".tag-classic span")
+        .map((_, el) => $(el).text().trim())
+        .get();
+
+      tags.push(meta["Quốc gia"]);
+
+      const genres = $(".tag-topic")
+        .map((_, el) => $(el).text().trim())
+        .get();
+
+      const recommend = $("#tab-suggest .sw-item")
         .map((_, item) => {
-          const title = $(item).find("h3.movie-title").text().trim() || "";
+          const link = $(item).find("a.v-thumbnail");
 
-          const href = $(item).find("a.movie-link").attr("href") || "";
-          const alias =
-            $(item).find("div.movie-original-title").text().trim() || "";
-
+          const href = link.attr("href") || "";
           const slug = href.split("/").filter(Boolean).pop() || null;
 
-          const image = $(item).find("img").attr("src");
+          const title = link.find("img").attr("alt")?.trim() || "";
 
-          const duration = $(item).find("div.movie-duration").text() || "N/A";
+          let thumbnail = link.find("img").attr("src") || null;
+
+          if (thumbnail && !thumbnail.startsWith("http")) {
+            thumbnail = BASE_WEB + thumbnail;
+          }
 
           return {
             slug,
             title,
-            image,
-            duration,
-            alias,
+            thumbnail,
           };
         })
         .get();
 
+      const actors = $("#tab-cast .item-title a")
+        .map((_, el) => $(el).text().trim())
+        .get();
+
       const result = {
         slug,
-        image,
+        poster,
+        thumbnail,
         title,
         alias,
         description,
-        status: meta["Trạng thái"] || null,
-        country: meta["Quốc gia"] || [],
         duration: meta["Thời lượng"] || null,
-        quality: meta["Chất lượng"] || null,
-        sub: meta["Ngôn ngữ"] || null,
-        year: meta["Năm phát hành"] || null,
         director: meta["Đạo diễn"] || [],
-        actors: meta["Diễn viên"] || [],
-        genres: meta["Thể loại"] || [],
+        actors,
+        tags,
+        genres,
         recommend: recommend.slice(0, 10),
         episodes,
       };
@@ -203,7 +228,9 @@ export const MovieService = {
     if (cached) return cached;
 
     try {
-      const url = [BASE_WEB, movieSlug, epSlug].filter(Boolean).join("/");
+      const url = [BASE_WEB, "xem-phim", movieSlug, epSlug]
+        .filter(Boolean)
+        .join("/");
 
       const res = await fetch(url, {
         headers: {
@@ -257,8 +284,8 @@ export const MovieService = {
     try {
       const url =
         page === 1
-          ? `${BASE_WEB}/${genreSlug}`
-          : `${BASE_WEB}/${genreSlug}/page/${page}/`;
+          ? `${BASE_WEB}/the-loai/${genreSlug}`
+          : `${BASE_WEB}/the-loai/${genreSlug}/page/${page}/`;
 
       const { data } = await axios.get(url, {
         headers: {
@@ -269,41 +296,36 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const results = $("div.movies-grid div.movie-item")
+      const results = $("div.cards-grid-wrapper div.sw-item")
         .map((_, item) => {
-          const title = $(item).find("h3.movie-title").text().trim() || "";
+          const title = $(item).find("h4.item-title").text().trim() || "";
 
-          const alias =
-            $(item).find("div.movie-original-title").text().trim() || "";
+          const alias = $(item).find("h4.alias-title").text().trim() || "";
 
-          const href = $(item).find("a.movie-link").attr("href") || "";
+          const href = $(item).find("a.v-thumbnail").attr("href") || "";
 
           const slug = href.split("/").filter(Boolean).pop() || null;
 
-          const image = $(item).find("img").attr("src");
+          const src = $(item).find("img").attr("src") || "";
+
+          const thumbnail = src.startsWith("http") ? src : BASE_WEB + src;
 
           const duration = $(item).find("div.movie-duration").text() || "N/A";
 
           return {
             slug,
             title,
-            image,
+            thumbnail,
             duration,
             alias,
           };
         })
         .get();
 
-      // ===== CURRENT PAGE =====
-      const current = Number($("span.page-numbers.current").text()) || page;
+      const current = Number($("input#jump-page-input").val()) || page;
 
-      const totalPage = Math.max(
-        1,
-        ...$(".nav-links .page-numbers")
-          .map((_, el) => Number($(el).text().trim()))
-          .get()
-          .filter((n) => !isNaN(n)),
-      );
+      const totalPage = Number($("input#jump-page-input").attr("max")) || 1;
+
       const payload = {
         results,
         current,
@@ -340,20 +362,25 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const result = $(".comic-banner")
+      const result = $("div.slider-chinh div.swiper-slide")
         .map((_, item) => {
-          const title = $(item).find("h3.comic-title").text().trim();
+          const title = $(item).find("h3.media-title").text().trim();
 
-          const href = $(item).find("a.movie-link").attr("href") || "";
+          const alias = $(item).find("h3.media-alias-title").text();
+
+          const href = $(item).find("a.slide-url").attr("href") || "";
 
           const slug = href.split("/").filter(Boolean).pop() || null;
 
-          const image = $(item).find("img").attr("src") || "";
+          const style = $(item).find("div.background-fade").attr("style") || "";
+
+          const poster = style.match(/url\(['"]?(.*?)['"]?\)/)?.[1] || "";
 
           return {
             slug,
+            alias,
             title,
-            image,
+            poster,
           };
         })
         .get();
@@ -388,8 +415,8 @@ export const MovieService = {
 
     const src =
       page === 1
-        ? `${BASE_WEB}/country/${countrySlug}`
-        : `${BASE_WEB}/country/${countrySlug}/page/${page}`;
+        ? `${BASE_WEB}/quoc-gia/${countrySlug}`
+        : `${BASE_WEB}/quoc-gia/${countrySlug}/page/${page}`;
 
     try {
       const { data } = await axios.get(src, {
@@ -401,38 +428,201 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const results = $("div.movies-grid div.movie-item")
+      const results = $("div.cards-grid-wrapper div.sw-item")
         .map((_, item) => {
-          const title = $(item).find("h3.movie-title").text().trim() || "";
+          const title = $(item).find("h4.item-title").text().trim() || "";
 
-          const href = $(item).find("a.movie-link").attr("href") || "";
-          const alias =
-            $(item).find("div.movie-original-title").text().trim() || "";
+          const alias = $(item).find("h4.alias-title").text().trim() || "";
+
+          const href = $(item).find("a.v-thumbnail").attr("href") || "";
+
           const slug = href.split("/").filter(Boolean).pop() || null;
 
-          const image = $(item).find("img").attr("src");
+          const src = $(item).find("img").attr("src") || "";
+
+          const thumbnail = src.startsWith("http") ? src : BASE_WEB + src;
 
           const duration = $(item).find("div.movie-duration").text() || "N/A";
 
           return {
             slug,
             title,
-            image,
+            thumbnail,
             duration,
             alias,
           };
         })
         .get();
 
-      const current = Number($("span.page-numbers.current").text()) || page;
+      const current = Number($("input#jump-page-input").val()) || page;
 
-      const totalPage = Math.max(
-        1,
-        ...$(".nav-links .page-numbers")
-          .map((_, el) => Number($(el).text().trim()))
-          .get()
-          .filter((n) => !isNaN(n)),
-      );
+      const totalPage = Number($("input#jump-page-input").attr("max")) || 1;
+
+      const payload = {
+        results,
+        current,
+        totalPage,
+      };
+
+      await setCache(CACHE_KEY, payload);
+
+      return payload;
+    } catch (error) {
+      console.error("Crawl error:", error);
+
+      return {
+        results: [],
+        current: 0,
+        totalPage: 0,
+      };
+    }
+  },
+
+  // Lấy phim bộ
+  getPhimBo: async (
+    page: number = 1,
+  ): Promise<{
+    results: any[];
+    totalPage: number;
+    current: number;
+  }> => {
+    const CACHE_KEY = `movie:phim-bo:${page}`;
+
+    const cached = await getCache<{
+      results: any[];
+      totalPage: number;
+      current: number;
+    }>(CACHE_KEY);
+
+    if (cached) return cached;
+
+    const src =
+      page === 1
+        ? `${BASE_WEB}/danh-muc/phim-bo`
+        : `${BASE_WEB}/danh-muc/phim-bo/page/${page}`;
+
+    try {
+      const { data } = await axios.get(src, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        timeout: 20000,
+      });
+
+      const $ = cheerio.load(data);
+
+      const results = $("div.cards-grid-wrapper div.sw-item")
+        .map((_, item) => {
+          const title = $(item).find("h4.item-title").text().trim() || "";
+
+          const alias = $(item).find("h4.alias-title").text().trim() || "";
+
+          const href = $(item).find("a.v-thumbnail").attr("href") || "";
+
+          const slug = href.split("/").filter(Boolean).pop() || null;
+
+          const src = $(item).find("img").attr("src") || "";
+
+          const thumbnail = src.startsWith("http") ? src : BASE_WEB + src;
+
+          const duration = $(item).find("div.movie-duration").text() || "N/A";
+
+          return {
+            slug,
+            title,
+            thumbnail,
+            duration,
+            alias,
+          };
+        })
+        .get();
+
+      const current = Number($("input#jump-page-input").val()) || page;
+
+      const totalPage = Number($("input#jump-page-input").attr("max")) || 1;
+
+      const payload = {
+        results,
+        current,
+        totalPage,
+      };
+
+      await setCache(CACHE_KEY, payload);
+
+      return payload;
+    } catch (error) {
+      console.error("Crawl error:", error);
+
+      return {
+        results: [],
+        current: 0,
+        totalPage: 0,
+      };
+    }
+  },
+
+  // Lấy phim lẻ
+  getPhimLe: async (
+    page: number = 1,
+  ): Promise<{
+    results: any[];
+    totalPage: number;
+    current: number;
+  }> => {
+    const CACHE_KEY = `movie:phim-le:${page}`;
+
+    const cached = await getCache<{
+      results: any[];
+      totalPage: number;
+      current: number;
+    }>(CACHE_KEY);
+
+    if (cached) return cached;
+
+    const src =
+      page === 1
+        ? `${BASE_WEB}/danh-muc/phim-le`
+        : `${BASE_WEB}/danh-muc/phim-le/page/${page}`;
+
+    try {
+      const { data } = await axios.get(src, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        },
+        timeout: 20000,
+      });
+
+      const $ = cheerio.load(data);
+
+      const results = $("div.cards-grid-wrapper div.sw-item")
+        .map((_, item) => {
+          const title = $(item).find("h4.item-title").text().trim() || "";
+
+          const alias = $(item).find("h4.alias-title").text().trim() || "";
+
+          const href = $(item).find("a.v-thumbnail").attr("href") || "";
+
+          const slug = href.split("/").filter(Boolean).pop() || null;
+
+          const src = $(item).find("img").attr("src") || "";
+
+          const thumbnail = src.startsWith("http") ? src : BASE_WEB + src;
+
+          const duration = $(item).find("div.movie-duration").text() || "N/A";
+
+          return {
+            slug,
+            title,
+            thumbnail,
+            duration,
+            alias,
+          };
+        })
+        .get();
+
+      const current = Number($("input#jump-page-input").val()) || page;
+
+      const totalPage = Number($("input#jump-page-input").attr("max")) || 1;
 
       const payload = {
         results,
@@ -479,24 +669,29 @@ export const MovieService = {
 
       const $ = cheerio.load(data);
 
-      const results = $("div.movies-grid div.movie-item")
+      const results = $("div.cards-grid-wrapper div.sw-item")
         .map((_, item) => {
-          const title = $(item).find("h3.movie-title").text().trim() || "";
+          const title = $(item).find("h4.item-title").text().trim() || "";
 
-          const href = $(item).find("a.movie-link").attr("href") || "";
+          const alias = $(item).find("h4.alias-title").text().trim() || "";
+
+          const href = $(item).find("a.v-thumbnail").attr("href") || "";
 
           const slug = href.split("/").filter(Boolean).pop() || null;
-          const alias =
-            $(item).find("div.movie-original-title").text().trim() || "";
 
-          const image = $(item).find("img").attr("src");
+          const src =
+            $(item).find("img").attr("src") ||
+            $(item).find("img").attr("srcset") ||
+            "";
+
+          const thumbnail = src.startsWith("http") ? src : BASE_WEB + src;
 
           const duration = $(item).find("div.movie-duration").text() || "N/A";
 
           return {
             slug,
             title,
-            image,
+            thumbnail,
             duration,
             alias,
           };

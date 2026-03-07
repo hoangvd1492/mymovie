@@ -4,7 +4,7 @@ import Player from "@/component/utils/player/Player";
 import { SaveButton } from "@/component/utils/save-button/SaveButton";
 import { isFavorite } from "@/lib/action/favorites";
 import { getCurrentUser } from "@/lib/supabase/getCurrentUser";
-import { MovieService } from "@/service/movie.service";
+import { MovieService } from "@/service/movie_tp.service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DataNotFound } from "@/component/utils/data-notfound/DataNotFound";
@@ -65,7 +65,7 @@ export default async function Page({
       bg-center bg-cover
       grayscale blur-md scale-110
     "
-          style={{ backgroundImage: `url(${movie.image})` }}
+          style={{ backgroundImage: `url(${movie.poster})` }}
         />
 
         {/* Overlay tối */}
@@ -77,7 +77,7 @@ export default async function Page({
             {/* Poster */}
             <div className="w-[200px] shrink-0">
               <img
-                src={movie.image}
+                src={movie.thumbnail || movie.poster}
                 alt={movie.title}
                 className="w-full rounded shadow-lg"
               />
@@ -95,33 +95,20 @@ export default async function Page({
               )}
               {/* Meta */}
 
-              <div className="flex flex-row gap-2 flex-wrap">
-                {movie.year && (
-                  <div className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl">
-                    {movie.year}
-                  </div>
-                )}
-                {movie.quality && (
-                  <div className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl">
-                    {movie.quality}
-                  </div>
-                )}
-                {movie.country && (
-                  <div className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl">
-                    {movie.country}
-                  </div>
-                )}
-                {movie.status && (
-                  <div className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl">
-                    {movie.status}
-                  </div>
-                )}
-                {movie.sub && (
-                  <div className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl">
-                    {movie.sub}
-                  </div>
-                )}
-              </div>
+              {movie.tags && (
+                <div className="flex flex-row gap-2 flex-wrap">
+                  {movie.tags.map((g: string, i: number) => {
+                    return (
+                      <div
+                        key={i}
+                        className="text-sm font-[700] bg-secondary text-background w-fit py-1 px-4 rounded-xl"
+                      >
+                        {g}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {movie.genres && (
                 <div className="flex flex-row gap-2 flex-wrap">

@@ -1,5 +1,4 @@
-import { MovieInTopic } from "@/component/common/MovieInTopic/MovieInTopic";
-import { RandomMovie } from "@/component/common/random/Random";
+import { PhimLe } from "@/component/common/PhimLe/PhimLe";
 import { Loading } from "@/component/utils/loading/Loading";
 import { Suspense } from "react";
 
@@ -23,7 +22,7 @@ export default async function Page({
       </div>
 
       <Suspense fallback={<Loading />}>
-        <MovieInTopic slug={"phim-le-1"} currentPage={currentPage} />
+        <PhimLe currentPage={currentPage} />
       </Suspense>
     </div>
   );

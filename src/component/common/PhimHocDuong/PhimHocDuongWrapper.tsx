@@ -1,4 +1,4 @@
-import { MovieService } from "@/service/movie.service";
+import { MovieService } from "@/service/movie_tp.service";
 import { PhimHocDuong } from "./PhimHocDuong";
 
 export async function PhimHocDuongWrapper() {

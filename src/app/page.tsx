@@ -3,8 +3,8 @@ import { PhimVietNamWrapper } from "@/component/common/PhimVietNam/PhimVietNamWr
 import { PhimHanWrapper } from "@/component/common/PhimHan/PhimHanWrapper";
 import { Loading } from "@/component/utils/loading/Loading";
 
-import { MovieService } from "@/service/movie.service";
-import { ChevronsRight, Shuffle } from "lucide-react";
+import { MovieService } from "@/service/movie_tp.service";
+import { ChevronsRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { PhimHanhDongWrapper } from "@/component/common/PhimHanhDong/PhimHanhDongWrapper";

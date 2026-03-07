@@ -1,6 +1,6 @@
 import { MovieInCountry } from "@/component/common/MovieInCountry/MovieInCountry";
 import { Loading } from "@/component/utils/loading/Loading";
-import { MovieService } from "@/service/movie.service";
+import { MovieService } from "@/service/movie_tp.service";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 

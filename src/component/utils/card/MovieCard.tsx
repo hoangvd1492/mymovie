@@ -7,7 +7,7 @@ export const MovieCard: React.FC<{ item: any }> = ({ item }) => {
       <div className="w-full aspect-2/3 overflow-hidden mb-4 rounded">
         <Link href={`/${item.slug}`}>
           <img
-            src={item.image}
+            src={item.thumbnail}
             className="
               w-full h-full object-cover
               transition-all duration-300 ease-out

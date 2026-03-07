@@ -31,7 +31,7 @@ export const Banner: React.FC<{ data: any[] }> = ({ data }) => {
         {data.map((item) => (
           <SwiperSlide key={item.id}>
             <img
-              src={item.image}
+              src={item.poster}
               className="banner-image w-full h-full object-cover object-[50%_0%]"
             />
           </SwiperSlide>
@@ -42,7 +42,11 @@ export const Banner: React.FC<{ data: any[] }> = ({ data }) => {
           <div className=" mt-2 mb-2 lg:text-2xl font-[700]  text-md capitalize text-secondary">
             <span> {currentItem?.title}</span>
           </div>
-
+          {currentItem?.alias && (
+            <div className="mb-2 lg:text-sm font-[300]  text-md capitalize text-secondary">
+              <span> {currentItem?.alias}</span>
+            </div>
+          )}
           <Link
             className="bg-primary w-fit px-4 py-2 mt-6 rounded-[30px] flex flex-row gap-1 items-center"
             href={`/${currentItem?.slug}`}
